@@ -180,6 +180,9 @@ export default function App() {
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
   const [clientService, setClientService] = useState('')
+  
+  // Simulated logged-in client account (default: Amina Karimova)
+  const [loggedClientPhone, setLoggedClientPhone] = useState<string>('+7 701 123 4567')
 
   // Add a toast notification helper
   const addToast = (message: string, type: 'success' | 'info' | 'error' | 'undo' = 'success') => {
@@ -287,11 +290,24 @@ export default function App() {
     })
   }, [bookings, clientMasterId, clientDuration, clientSelectedDate])
 
-  // List of all unconfirmed (pending) bookings to confirm from the Client's perspective
-  const pendingBookingsForClient = useMemo(() => {
-    return bookings.filter(b => b.status === 'unconfirmed')
+  // List of unique accounts from bookings list dynamically
+  const clientAccounts = useMemo(() => {
+    const unique: Record<string, string> = {}
+    bookings.forEach(b => {
+      unique[b.phone] = b.clientName
+    })
+    return Object.entries(unique).map(([phone, name]) => ({ phone, name }))
   }, [bookings])
 
+  // List of all bookings for the currently logged-in client
+  const clientBookings = useMemo(() => {
+    return bookings.filter(b => b.phone === loggedClientPhone)
+  }, [bookings, loggedClientPhone])
+
+  // Count unconfirmed bookings for the logged-in client (for badge indicator)
+  const clientPendingCount = useMemo(() => {
+    return clientBookings.filter(b => b.status === 'unconfirmed').length
+  }, [clientBookings])
 
   // Open Aigerim add modal and preset the master, active date, and optional time
   const handleOpenAddModal = (presetTime?: string) => {
@@ -353,11 +369,13 @@ export default function App() {
       return
     }
 
+    const formattedPhone = clientPhone || '+7 777 000 0000'
+
     const newBooking: Booking = {
       id: Date.now().toString(),
       masterId: clientMasterId,
       clientName: clientName,
-      phone: clientPhone || '+7 777 000 0000',
+      phone: formattedPhone,
       time: clientTime,
       date: clientSelectedDate,
       duration: clientDuration,
@@ -366,6 +384,7 @@ export default function App() {
     }
 
     setBookings(prev => [...prev, newBooking])
+    setLoggedClientPhone(formattedPhone) // Automatically log in as the newly booked client!
     setClientName('')
     setClientPhone('')
     setClientService('')
@@ -701,7 +720,7 @@ export default function App() {
                                     </span>
                                   </div>
 
-                                  {/* Explicit Client Status Label (User request) */}
+                                  {/* Explicit Client Status Label */}
                                   <div className="mt-2 flex items-center gap-1">
                                     {isConfirmed ? (
                                       <span className="text-[10px] font-extrabold text-emerald-650 bg-emerald-100/50 px-2 py-0.5 rounded-md flex items-center gap-1">
@@ -989,7 +1008,7 @@ export default function App() {
 
                     {/* EDGE CASE: Live Conflict Alert UI */}
                     {hasLiveConflict && (
-                      <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-250 flex items-start gap-2.5 animate-pulse">
+                      <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-255 flex items-start gap-2.5 animate-pulse">
                         <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
                         <div className="text-xs text-amber-950 font-medium">
                           <span className="font-bold block">⚠️ Конфликт наложения времени</span>
@@ -1164,17 +1183,33 @@ export default function App() {
                   }`}
                 >
                   🌸 Моя запись
-                  {pendingBookingsForClient.length > 0 && (
+                  {clientPendingCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center text-[9px] border border-white animate-bounce">
-                      {pendingBookingsForClient.length}
+                      {clientPendingCount}
                     </span>
                   )}
                 </button>
               </div>
             </header>
 
+            {/* Logged Client Account Selector inside Portal */}
+            <div className="bg-[#16212d] px-5 py-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-900">
+              <span className="font-bold uppercase tracking-wider">Войти как клиент:</span>
+              <select
+                value={loggedClientPhone}
+                onChange={(e) => setLoggedClientPhone(e.target.value)}
+                className="bg-[#121c27] border border-slate-700 text-white rounded-lg px-2 py-1 text-[11px] font-black focus:outline-none focus:border-slate-500 max-w-[220px] truncate"
+              >
+                {clientAccounts.map(account => (
+                  <option key={account.phone} value={account.phone}>
+                    👤 {account.name} ({account.phone})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Client Portal Content */}
-            <main className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar pb-20 max-h-[580px] text-left">
+            <main className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar pb-20 max-h-[550px] text-left">
               
               {/* TAB 1: ONLINE BOOKING FORM */}
               {clientTab === 'book' && (
@@ -1328,7 +1363,7 @@ export default function App() {
                 </form>
               )}
 
-              {/* TAB 2: MY BOOKINGS (SIMULATION OF VISITS - Confirmed ones persistent) */}
+              {/* TAB 2: MY BOOKINGS (Filtered specifically by logged client phone) */}
               {clientTab === 'my-booking' && (
                 <div className="space-y-4">
                   <div className="bg-[#e9f2fb] p-3.5 rounded-2xl border border-blue-150 text-xs text-slate-700 flex items-start gap-2.5">
@@ -1336,22 +1371,22 @@ export default function App() {
                     <div>
                       <strong>Личный кабинет клиента</strong>
                       <p className="mt-0.5 leading-relaxed text-[11px]">
-                        Все ваши записи сохранены здесь. Вы можете подтвердить визиты, ожидающие ответа. Подтвержденные записи не исчезают, а отмечаются зеленым статусом.
+                        Вы вошли в систему. Ниже перечислены записи, привязанные к вашему номеру телефона.
                       </p>
                     </div>
                   </div>
 
                   <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Мои записи</h3>
                   
-                  {bookings.length === 0 ? (
+                  {clientBookings.length === 0 ? (
                     <div className="py-10 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
                       <CheckCircle size={32} className="mx-auto mb-2 text-slate-300" />
-                      <p className="text-xs font-bold font-black">У вас пока нет записей</p>
-                      <p className="text-[10px] text-slate-450 mt-0.5">Перейдите на вкладку выше, чтобы записаться.</p>
+                      <p className="text-xs font-black">У вас пока нет записей</p>
+                      <p className="text-[10px] text-slate-450 mt-0.5">Перейдите на вкладку записи, чтобы добавить.</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {bookings.map((booking) => {
+                      {clientBookings.map((booking) => {
                         const m = MASTERS.find(master => master.id === booking.masterId) || MASTERS[0]
                         const endFloat = timeToFloat(booking.time) + booking.duration
                         const cEnd = floatToTime(endFloat)
