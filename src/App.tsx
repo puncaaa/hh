@@ -13,7 +13,6 @@ import {
   CheckCircle,
   RotateCcw,
   Sparkle,
-  Calendar,
   Info
 } from 'lucide-react'
 
@@ -171,16 +170,6 @@ export default function App() {
   const [formMasterId, setFormMasterId] = useState('master1')
   const [overrideConflict, setOverrideConflict] = useState(false)
 
-  // Client Portal State
-  const [clientTab, setClientTab] = useState<'book' | 'my-booking'>('book')
-  const [clientMasterId, setClientMasterId] = useState('master1')
-  const [clientSelectedDate, setClientSelectedDate] = useState<string>('2026-06-29')
-  const [clientTime, setClientTime] = useState('09:00')
-  const [clientDuration, setClientDuration] = useState<number>(1.0)
-  const [clientName, setClientName] = useState('')
-  const [clientPhone, setClientPhone] = useState('')
-  const [clientService, setClientService] = useState('')
-  
   // Simulated logged-in client account (default: Amina Karimova)
   const [loggedClientPhone, setLoggedClientPhone] = useState<string>('+7 701 123 4567')
 
@@ -278,18 +267,6 @@ export default function App() {
 
   const hasLiveConflict = liveConflicts.length > 0
 
-  // Filter time slots that are completely free for the Client online booking dropdown (Date and Duration aware)
-  const clientAvailableSlots = useMemo(() => {
-    return TIME_SLOTS.filter(slot => {
-      const slotVal = timeToFloat(slot)
-      return !bookings.some(b => {
-        if (b.masterId !== clientMasterId || b.date !== clientSelectedDate) return false
-        const bStart = timeToFloat(b.time)
-        return checkOverlap(slotVal, clientDuration, bStart, b.duration)
-      })
-    })
-  }, [bookings, clientMasterId, clientDuration, clientSelectedDate])
-
   // List of unique accounts from bookings list dynamically
   const clientAccounts = useMemo(() => {
     const unique: Record<string, string> = {}
@@ -303,11 +280,6 @@ export default function App() {
   const clientBookings = useMemo(() => {
     return bookings.filter(b => b.phone === loggedClientPhone)
   }, [bookings, loggedClientPhone])
-
-  // Count unconfirmed bookings for the logged-in client (for badge indicator)
-  const clientPendingCount = useMemo(() => {
-    return clientBookings.filter(b => b.status === 'unconfirmed').length
-  }, [clientBookings])
 
   // Open Aigerim add modal and preset the master, active date, and optional time
   const handleOpenAddModal = (presetTime?: string) => {
@@ -359,38 +331,6 @@ export default function App() {
         : `Клиент ${formClientName} успешно записан на ${formTime}!`, 
       hasLiveConflict ? 'info' : 'success'
     )
-  }
-
-  // Handle Client Online Booking submission
-  const handleClientBookOnline = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!clientName.trim()) {
-      addToast('Введите имя для записи', 'error')
-      return
-    }
-
-    const formattedPhone = clientPhone || '+7 777 000 0000'
-
-    const newBooking: Booking = {
-      id: Date.now().toString(),
-      masterId: clientMasterId,
-      clientName: clientName,
-      phone: formattedPhone,
-      time: clientTime,
-      date: clientSelectedDate,
-      duration: clientDuration,
-      service: clientService || 'Консультация',
-      status: 'unconfirmed'
-    }
-
-    setBookings(prev => [...prev, newBooking])
-    setLoggedClientPhone(formattedPhone) // Automatically log in as the newly booked client!
-    setClientName('')
-    setClientPhone('')
-    setClientService('')
-    
-    addToast(`Заявка отправлена! Запись на ${clientTime} добавлена в блокнот салона.`, 'success')
-    setClientTab('my-booking')
   }
 
   // Handle Client confirming their appointment directly from the portal (Persistent in list)
@@ -715,7 +655,7 @@ export default function App() {
                                     <span className="text-xs opacity-80 font-semibold flex items-center gap-1">
                                       <Scissors size={11} className="opacity-60 text-slate-500" /> {booking.service}
                                     </span>
-                                    <span className="text-[10px] font-black bg-slate-100/90 text-slate-650 px-1.5 py-0.5 rounded-md">
+                                    <span className="text-[10px] font-black bg-slate-100/90 text-slate-655 px-1.5 py-0.5 rounded-md">
                                       ⏱️ {booking.time} - {formattedEndTime} ({booking.duration === 0.5 ? '30м' : `${booking.duration}ч`})
                                     </span>
                                   </div>
@@ -931,7 +871,7 @@ export default function App() {
                           placeholder="+7 707..."
                           value={formPhone}
                           onChange={(e) => setFormPhone(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-850 focus:outline-none focus:border-slate-900 font-semibold"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-855 focus:outline-none focus:border-slate-900 font-semibold"
                         />
                       </div>
                     </div>
@@ -1008,7 +948,7 @@ export default function App() {
 
                     {/* EDGE CASE: Live Conflict Alert UI */}
                     {hasLiveConflict && (
-                      <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-255 flex items-start gap-2.5 animate-pulse">
+                      <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-250 flex items-start gap-2.5 animate-pulse">
                         <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={18} />
                         <div className="text-xs text-amber-950 font-medium">
                           <span className="font-bold block">⚠️ Конфликт наложения времени</span>
@@ -1133,7 +1073,7 @@ export default function App() {
         </div>
 
         {/* ======================================================== */}
-        {/* RIGHT COLUMN: CLIENT PORTAL (CUSTOMER INTERFACE)         */}
+        {/* RIGHT COLUMN: CLIENT PORTAL (MAGIC LINK PAGE)            */}
         {/* ======================================================== */}
         <div className={`${mobileView === 'client' ? 'block' : 'hidden md:block'} flex justify-center`}>
           <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-250 flex flex-col relative min-h-[820px] max-h-[850px] bg-slate-50/50">
@@ -1157,293 +1097,110 @@ export default function App() {
                   <Sparkle size={18} fill="currentColor" />
                 </div>
                 <div>
-                  <h2 className="text-base font-extrabold leading-tight">Салон красоты Bloom</h2>
-                  <p className="text-[10px] text-slate-300 font-semibold uppercase tracking-wider">Онлайн-запись и личный кабинет</p>
+                  <h2 className="text-base font-extrabold leading-tight">Bloom Beauty</h2>
+                  <p className="text-[10px] text-slate-300 font-semibold uppercase tracking-wider">Быстрое подтверждение визита</p>
                 </div>
-              </div>
-
-              {/* Client Tab Selectors */}
-              <div className="flex gap-2 mt-4 p-1 bg-slate-900/40 rounded-xl">
-                <button
-                  onClick={() => setClientTab('book')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                    clientTab === 'book'
-                      ? 'bg-white text-slate-900 shadow-sm font-black'
-                      : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  📝 Записаться онлайн
-                </button>
-                <button
-                  onClick={() => setClientTab('my-booking')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all relative cursor-pointer ${
-                    clientTab === 'my-booking'
-                      ? 'bg-white text-slate-900 shadow-sm font-black'
-                      : 'text-slate-300 hover:text-white'
-                  }`}
-                >
-                  🌸 Моя запись
-                  {clientPendingCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full bg-rose-500 text-white font-bold flex items-center justify-center text-[9px] border border-white animate-bounce">
-                      {clientPendingCount}
-                    </span>
-                  )}
-                </button>
               </div>
             </header>
 
-            {/* Logged Client Account Selector inside Portal */}
-            <div className="bg-[#16212d] px-5 py-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-900">
-              <span className="font-bold uppercase tracking-wider">Войти как клиент:</span>
+            {/* Developer simulation dropdown */}
+            <div className="bg-[#16212d] px-5 py-2.5 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-900">
+              <span className="font-bold uppercase tracking-wider text-[9px] text-amber-450">[DEV] Симуляция клиента:</span>
               <select
                 value={loggedClientPhone}
                 onChange={(e) => setLoggedClientPhone(e.target.value)}
-                className="bg-[#121c27] border border-slate-700 text-white rounded-lg px-2 py-1 text-[11px] font-black focus:outline-none focus:border-slate-500 max-w-[220px] truncate"
+                className="bg-[#121c27] border border-slate-700 text-white rounded-lg px-2 py-1 text-[11px] font-black focus:outline-none focus:border-slate-500 max-w-[200px] truncate"
               >
                 {clientAccounts.map(account => (
                   <option key={account.phone} value={account.phone}>
-                    👤 {account.name} ({account.phone})
+                    👤 {account.name}
                   </option>
                 ))}
               </select>
             </div>
 
             {/* Client Portal Content */}
-            <main className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar pb-20 max-h-[550px] text-left">
-              
-              {/* TAB 1: ONLINE BOOKING FORM */}
-              {clientTab === 'book' && (
-                <form onSubmit={handleClientBookOnline} className="space-y-4">
-                  {/* Select date selector for client */}
+            <main className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar pb-20 max-h-[580px] text-left">
+              <div className="space-y-4 animate-fade-in">
+                
+                {/* Simplified Info block */}
+                <div className="bg-[#e9f2fb] p-3.5 rounded-2xl border border-blue-150 text-xs text-slate-750 flex items-start gap-2.5">
+                  <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Выберите дату</label>
-                    <div className="flex gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-3xs">
-                      {DATES.map((d) => (
-                        <button
-                          type="button"
-                          key={d.value}
-                          onClick={() => {
-                            setClientSelectedDate(d.value)
-                            setClientTime('09:00') // reset time to avoid conflict confusion
-                          }}
-                          className={`flex-1 py-2 px-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
-                            clientSelectedDate === d.value 
-                              ? 'bg-[#1e2d3d] text-white shadow-sm' 
-                              : 'text-slate-500 hover:bg-slate-50'
-                          }`}
-                        >
-                          <span className="block text-[7px] leading-none opacity-80">{d.relativeLabel}</span>
-                          <span>{d.shortLabel}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <strong className="text-[13px] font-black text-slate-800 block">Детали вашего визита</strong>
+                    <p className="mt-1 leading-relaxed text-[11px] text-slate-600">
+                      Пожалуйста, проверьте детали визита и подтвердите его. Это поможет мастеру спланировать день.
+                    </p>
                   </div>
-
-                  <div>
-                    <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Выберите мастера</h3>
-                    <div className="grid grid-cols-3 gap-2 mt-2">
-                      {MASTERS.map(m => (
-                        <button
-                          type="button"
-                          key={m.id}
-                          onClick={() => {
-                            setClientMasterId(m.id)
-                            setClientTime('09:00') // reset time to avoid conflict confusion
-                          }}
-                          className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center ${
-                            clientMasterId === m.id 
-                              ? `border-[#1e2d3d] bg-[#1e2d3d] text-white font-bold shadow-md` 
-                              : 'border-slate-200 bg-white text-slate-655 hover:bg-slate-50'
-                          }`}
-                        >
-                          <span className="text-xl mb-1">{m.avatar}</span>
-                          <span className="text-[11px] font-black">{m.name}</span>
-                          <span className="text-[8px] opacity-75 mt-0.5">{m.role.split(' ')[0]}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Duration Select */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Длительность</label>
-                      <select
-                        value={clientDuration}
-                        onChange={(e) => {
-                          setClientDuration(parseFloat(e.target.value))
-                          setClientTime('09:00') // reset to avoid instant conflict
-                        }}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-slate-500"
-                      >
-                        <option value={0.5}>30 мин</option>
-                        <option value={1.0}>1 час</option>
-                        <option value={1.5}>1.5 часа</option>
-                        <option value={2.0}>2 часа</option>
-                        <option value={3.0}>3 часа</option>
-                      </select>
-                    </div>
-
-                    {/* Time slots filter (ONLY SHOWS COMPLETELY FREE SLOTS FOR DURATION!) */}
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Свободное время</label>
-                      <select
-                        value={clientTime}
-                        onChange={(e) => setClientTime(e.target.value)}
-                        disabled={clientAvailableSlots.length === 0}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-slate-500 disabled:opacity-50"
-                      >
-                        {clientAvailableSlots.length > 0 ? (
-                          clientAvailableSlots.map(t => (
-                            <option key={t} value={t}>{t}</option>
-                          ))
-                        ) : (
-                          <option>Нет свободных окон</option>
-                        )}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Warning inside booking form if master has no slots */}
-                  {clientAvailableSlots.length === 0 && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2">
-                      <AlertTriangle className="text-rose-500 shrink-0 mt-0.5" size={16} />
-                      <span>У данного специалиста нет окон на эту дату/длительность. Выберите другую дату или мастера.</span>
-                    </div>
-                  )}
-
-                  {/* Contact info */}
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Ваше имя *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Например: Карина Сарсенова"
-                      value={clientName}
-                      onChange={(e) => setClientName(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#1e2d3d]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Телефон *</label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="+7 777 987 6543"
-                      value={clientPhone}
-                      onChange={(e) => setClientPhone(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-[#1e2d3d]"
-                    />
-                  </div>
-
-                  {/* Service Selection */}
-                  <div>
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Услуга</label>
-                    <select
-                      value={clientService}
-                      onChange={(e) => setClientService(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-slate-500 font-medium"
-                    >
-                      <option value="">Выберите услугу...</option>
-                      {SERVICES.map(s => (
-                        <option key={s} value={s}>{s}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={clientAvailableSlots.length === 0}
-                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3.5 px-4 rounded-xl transition-all shadow-md shadow-emerald-100 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer text-sm"
-                  >
-                    <Calendar size={16} />
-                    Записаться на сеанс
-                  </button>
-                </form>
-              )}
-
-              {/* TAB 2: MY BOOKINGS (Filtered specifically by logged client phone) */}
-              {clientTab === 'my-booking' && (
-                <div className="space-y-4">
-                  <div className="bg-[#e9f2fb] p-3.5 rounded-2xl border border-blue-150 text-xs text-slate-700 flex items-start gap-2.5">
-                    <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
-                    <div>
-                      <strong>Личный кабинет клиента</strong>
-                      <p className="mt-0.5 leading-relaxed text-[11px]">
-                        Вы вошли в систему. Ниже перечислены записи, привязанные к вашему номеру телефона.
-                      </p>
-                    </div>
-                  </div>
-
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Мои записи</h3>
-                  
-                  {clientBookings.length === 0 ? (
-                    <div className="py-10 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
-                      <CheckCircle size={32} className="mx-auto mb-2 text-slate-300" />
-                      <p className="text-xs font-black">У вас пока нет записей</p>
-                      <p className="text-[10px] text-slate-450 mt-0.5">Перейдите на вкладку записи, чтобы добавить.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {clientBookings.map((booking) => {
-                        const m = MASTERS.find(master => master.id === booking.masterId) || MASTERS[0]
-                        const endFloat = timeToFloat(booking.time) + booking.duration
-                        const cEnd = floatToTime(endFloat)
-                        const bookingDateObj = DATES.find(d => d.value === booking.date)
-                        const dateLabel = bookingDateObj ? bookingDateObj.shortLabel : booking.date
-                        const isConfirmed = booking.status === 'confirmed'
-
-                        return (
-                          <div key={booking.id} className="p-4 bg-white rounded-2xl border border-slate-200 shadow-3xs flex flex-col gap-3">
-                            <div className="flex justify-between items-start">
-                              <div className="flex items-center gap-2">
-                                <span className="text-2xl">{m.avatar}</span>
-                                <div>
-                                  <p className="text-xs font-black text-slate-800">Мастер {m.name}</p>
-                                  <p className="text-[9px] text-slate-400 font-bold uppercase">{m.role}</p>
-                                </div>
-                              </div>
-                              <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                                isConfirmed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                              }`}>
-                                {isConfirmed ? 'Подтвержден' : 'Ждет ответа'}
-                              </span>
-                            </div>
-
-                            <div className="bg-slate-50 p-2.5 rounded-xl text-xs space-y-1">
-                              <p><strong>Услуга:</strong> {booking.service}</p>
-                              <p><strong>Дата визита:</strong> {dateLabel} ({bookingDateObj ? bookingDateObj.relativeLabel : ''})</p>
-                              <p><strong>Время:</strong> {booking.time} - {cEnd} ({booking.duration === 0.5 ? '30 мин' : `${booking.duration} ч`})</p>
-                              <p><strong>Имя на записи:</strong> {booking.clientName}</p>
-                            </div>
-
-                            {isConfirmed ? (
-                              <div className="bg-emerald-50 text-emerald-800 text-xs font-bold py-2.5 px-4 rounded-xl border border-emerald-100 flex items-center justify-center gap-2">
-                                <CheckCircle size={16} className="text-emerald-600" />
-                                <span>Визит подтвержден! Ждем вас в салоне 🌸</span>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => handleClientConfirmVisit(booking.id, booking.clientName)}
-                                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2 px-4 rounded-xl text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm shadow-emerald-50 cursor-pointer"
-                              >
-                                <Check size={14} strokeWidth={2.5} />
-                                Да, я подтверждаю свой визит
-                              </button>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
                 </div>
-              )}
+
+                <h3 className="text-sm font-black text-slate-850 uppercase tracking-wider">Моя запись</h3>
+                
+                {clientBookings.length === 0 ? (
+                  <div className="py-10 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200">
+                    <CheckCircle size={32} className="mx-auto mb-2 text-slate-350" />
+                    <p className="text-xs font-bold">Нет активных записей</p>
+                    <p className="text-[10px] text-slate-450 mt-0.5">Выберите другого клиента в [DEV] симуляторе вверху.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {clientBookings.map((booking) => {
+                      const m = MASTERS.find(master => master.id === booking.masterId) || MASTERS[0]
+                      const endFloat = timeToFloat(booking.time) + booking.duration
+                      const cEnd = floatToTime(endFloat)
+                      const bookingDateObj = DATES.find(d => d.value === booking.date)
+                      const dateLabel = bookingDateObj ? bookingDateObj.shortLabel : booking.date
+                      const isConfirmed = booking.status === 'confirmed'
+
+                      return (
+                        <div key={booking.id} className="p-4 bg-white rounded-2xl border border-slate-200 shadow-3xs flex flex-col gap-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl">{m.avatar}</span>
+                              <div>
+                                <p className="text-xs font-black text-slate-800">Мастер {m.name}</p>
+                                <p className="text-[9px] text-slate-450 font-bold uppercase">{m.role}</p>
+                              </div>
+                            </div>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                              isConfirmed ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {isConfirmed ? 'Подтвержден' : 'Ждет ответа'}
+                            </span>
+                          </div>
+
+                          <div className="bg-slate-50 p-2.5 rounded-xl text-xs space-y-1">
+                            <p><strong>Услуга:</strong> {booking.service}</p>
+                            <p><strong>Дата визита:</strong> {dateLabel} ({bookingDateObj ? bookingDateObj.relativeLabel : ''})</p>
+                            <p><strong>Время:</strong> {booking.time} - {cEnd} ({booking.duration === 0.5 ? '30 мин' : `${booking.duration} ч`})</p>
+                            <p><strong>Имя на записи:</strong> {booking.clientName}</p>
+                          </div>
+
+                          {isConfirmed ? (
+                            <div className="bg-emerald-50 text-emerald-800 text-xs font-bold py-2.5 px-4 rounded-xl border border-emerald-100 flex items-center justify-center gap-2 animate-fade-in">
+                              <CheckCircle size={16} className="text-emerald-600" />
+                              <span>Визит подтвержден! Ждем вас в салоне 🌸</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleClientConfirmVisit(booking.id, booking.clientName)}
+                              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2 px-4 rounded-xl text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm shadow-emerald-50 cursor-pointer"
+                            >
+                              <Check size={14} strokeWidth={2.5} />
+                              Да, я подтверждаю свой визит
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </main>
 
             {/* Footer decoration */}
-            <div className="bg-slate-100 py-3.5 text-center text-[10px] text-slate-450 border-t border-slate-200">
-              Bloom Beauty • Интеграция в 1 клик
+            <div className="bg-slate-100 py-3.5 text-center text-[10px] text-slate-450 border-t border-slate-200 font-bold">
+              Bloom Beauty • Подтверждение в 1 клик
             </div>
           </div>
         </div>
